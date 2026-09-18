@@ -1,253 +1,152 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Real-Life Poker Tracker</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getDatabase, ref, set, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+    <title>My Website</title>
 
-// ===== Firebase Config =====
-const firebaseConfig = {
-  apiKey: "AIzaSyARqerYkl3j4qgLTH5nUGgsxZGTfzBQH2Y",
-  authDomain: "project-ad25b39e-4316-498e-aa2.firebaseapp.com",
-  databaseURL: "https://project-ad25b39e-4316-498e-aa2-default-rtdb.firebaseio.com",
-  projectId: "project-ad25b39e-4316-498e-aa2",
-  storageBucket: "project-ad25b39e-4316-498e-aa2.appspot.com",
-  messagingSenderId: "590658949618",
-  appId: "1:590658949618:web:3f7a7fd13877151884db6b"
-};
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-// ===== Variables =====
-let username = '';
-let tableId = 'main_table';
-let selectedWinners = new Set();
+        body {
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: Arial, Helvetica, sans-serif;
 
-// ===== Login =====
-window.login = async () => {
-  username = document.getElementById('username').value.trim();
-  if(!username) return alert("Enter your name!");
+            /* Cool animated background */
+            background:
+                radial-gradient(circle at 20% 30%, #4f46e5 0%, transparent 35%),
+                radial-gradient(circle at 80% 70%, #9333ea 0%, transparent 35%),
+                linear-gradient(135deg, #050816, #111827, #030712);
+            background-size: 200% 200%;
+            animation: backgroundMove 12s ease infinite;
+        }
 
-  const playerRef = ref(db, `tables/${tableId}/players/${username}`);
-  await set(playerRef, { chips: 400, bet: 0, status: 'waiting', folded: false });
+        @keyframes backgroundMove {
+            0% {
+                background-position: 0% 50%;
+            }
 
-  const tableRef = ref(db, `tables/${tableId}`);
-  const tableSnap = await get(tableRef);
+            50% {
+                background-position: 100% 50%;
+            }
 
-  if(!tableSnap.exists()){
-    await set(tableRef, {
-      turnIndex: 0,
-      pot: 0,
-      lastBet: 0,
-      playerOrder: [username],
-      players: { [username]: { chips:400, bet:0, status:'waiting', folded:false } }
-    });
-  } else {
-    const data = tableSnap.val();
-    const playerOrder = Array.isArray(data.playerOrder) ? data.playerOrder : [];
-    const players = data.players || {};
-    const turnIndex = typeof data.turnIndex==='number'? data.turnIndex : 0;
-    const pot = typeof data.pot==='number'? data.pot : 0;
-    const lastBet = typeof data.lastBet==='number'? data.lastBet : 0;
+            100% {
+                background-position: 0% 50%;
+            }
+        }
 
-    if(!playerOrder.includes(username)){
-      playerOrder.push(username);
-      players[username] = { chips:400, bet:0, status:'waiting', folded:false };
-    }
+        /* Floating glow */
+        body::before,
+        body::after {
+            content: "";
+            position: absolute;
+            width: 350px;
+            height: 350px;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.35;
+            pointer-events: none;
+        }
 
-    await set(tableRef, { turnIndex, pot, lastBet, playerOrder, players });
-  }
+        body::before {
+            background: #6366f1;
+            top: -100px;
+            left: -100px;
+            animation: float1 8s ease-in-out infinite;
+        }
 
-  document.getElementById('login').style.display='none';
-  document.getElementById('table').style.display='block';
-  watchTable();
-};
+        body::after {
+            background: #c026d3;
+            bottom: -100px;
+            right: -100px;
+            animation: float2 10s ease-in-out infinite;
+        }
 
-// ===== Watch Table =====
-function watchTable(){
-  const tableRef = ref(db, `tables/${tableId}`);
-  onValue(tableRef, snapshot => {
-    const data = snapshot.val();
-    if(!data) return;
-    const { players, turnIndex, playerOrder, pot, lastBet } = data;
-    renderTable(players||{}, turnIndex||0, playerOrder||[], pot||0, lastBet||0);
-  });
-}
+        @keyframes float1 {
+            0%, 100% {
+                transform: translate(0, 0);
+            }
 
-// ===== Render Table =====
-function renderTable(players, turnIndex, playerOrder, pot, lastBet){
-  const container = document.getElementById('players');
-  container.innerHTML='';
+            50% {
+                transform: translate(120px, 80px);
+            }
+        }
 
-  for(let i=0;i<playerOrder.length;i++){
-    const name = playerOrder[i];
-    const info = players[name];
-    if(!info) continue;
+        @keyframes float2 {
+            0%, 100% {
+                transform: translate(0, 0);
+            }
 
-    const div = document.createElement('div');
-    div.className='player';
-    if(i===turnIndex && !info.folded) div.classList.add('active');
+            50% {
+                transform: translate(-100px, -80px);
+            }
+        }
 
-    div.innerHTML = `
-      <strong>${name}</strong><br>
-      Chips: ${info.chips}<br>
-      Bet: ${info.bet}<br>
-      Status: ${info.folded ? 'Folded' : info.status}<br>
-      <button onclick="toggleWinner('${name}')">
-        ${selectedWinners.has(name) ? '✅ Winner' : 'Select Winner'}
-      </button>
-    `;
-    container.appendChild(div);
-  }
+        /* Center content */
+        .container {
+            position: relative;
+            z-index: 2;
 
-  document.getElementById('pot').innerText = `Pot: ${pot}`;
-  document.getElementById('lastBet').innerText = `Current Bet: ${lastBet}`;
-}
+            width: min(90%, 900px);
+            padding: 50px;
 
-// ===== Toggle Winner =====
-function toggleWinner(name){
-  if(selectedWinners.has(name)){
-    selectedWinners.delete(name);
-  } else {
-    selectedWinners.add(name);
-  }
-  watchTable();
-}
+            text-align: center;
 
-// ===== Take Action =====
-window.takeAction = async (action) => {
-  const amountInput = parseInt(document.getElementById('amount').value) || 0;
-  const tableRef = ref(db, `tables/${tableId}`);
-  const tableSnap = await get(tableRef);
-  const tableData = tableSnap.val();
-  if(!tableData) return;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 25px;
 
-  let { playerOrder, turnIndex, pot, lastBet, players } = tableData;
-  const currentPlayer = playerOrder[turnIndex];
-  if(currentPlayer !== username) return alert("Not your turn!");
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
 
-  const playerData = players[username];
-  let updates = {};
-  let newPot = pot;
-  let newLastBet = lastBet;
+            box-shadow:
+                0 25px 80px rgba(0, 0, 0, 0.4),
+                inset 0 1px rgba(255, 255, 255, 0.1);
+        }
 
-  if(action==='fold'){
-    updates.folded=true;
-    updates.status='folded';
-  }
-  else if(action==='check'){
-    if(lastBet!==playerData.bet) return alert("Cannot check, must call or fold");
-    updates.status='checked';
-  }
-  else if(action==='call'){
-    const callAmount = lastBet - (playerData.bet||0);
-    if(callAmount>playerData.chips) return alert("Not enough chips to call");
-    updates.bet=lastBet;
-    updates.chips=playerData.chips - callAmount;
-    updates.status='called';
-    newPot += callAmount;
-  }
-  else if(action==='bet' || action==='raise'){
-    if(amountInput<=0 || amountInput>playerData.chips) return alert("Invalid amount");
-    updates.bet=(playerData.bet||0)+amountInput;
-    updates.chips=playerData.chips - amountInput;
-    updates.status=action;
-    newPot += amountInput;
-    newLastBet = updates.bet;
-  }
+        .text {
+            color: white;
+            font-size: clamp(2rem, 7vw, 5rem);
+            font-weight: 800;
+            letter-spacing: -2px;
 
-  players[username]={...playerData,...updates};
-  await update(ref(db, `tables/${tableId}/players/${username}`), updates);
+            text-shadow:
+                0 0 20px rgba(255, 255, 255, 0.25);
 
-  // Rotate turn to next non-folded player
-  const n = playerOrder.length;
-  let nextIndex = turnIndex;
-  for(let i=0;i<n;i++){
-    nextIndex=(nextIndex+1)%n;
-    if(!players[playerOrder[nextIndex]]?.folded) break;
-  }
-  await update(tableRef, { turnIndex: nextIndex, pot: newPot, lastBet: newLastBet });
-  document.getElementById('amount').value='';
-};
+            word-wrap: break-word;
+        }
 
-// ===== End Game =====
-window.endGame = async () => {
-  if(selectedWinners.size===0) return alert("Select at least one winner!");
+        @media (max-width: 600px) {
+            .container {
+                padding: 35px 20px;
+            }
 
-  const tableRef = ref(db, `tables/${tableId}`);
-  const tableSnap = await get(tableRef);
-  const tableData = tableSnap.val();
-  if(!tableData) return;
-
-  let { players, pot } = tableData;
-  const winners = Array.from(selectedWinners);
-  const share = Math.floor(pot/winners.length);
-
-  for(const winner of winners){
-    if(players[winner]){
-      players[winner].chips += share;
-      players[winner].bet = 0;
-      players[winner].status = 'waiting';
-      players[winner].folded = false;
-      await update(ref(db, `tables/${tableId}/players/${winner}`), players[winner]);
-    }
-  }
-
-  for(const [name,data] of Object.entries(players)){
-    if(!winners.includes(name)){
-      data.bet=0;
-      data.status='waiting';
-      data.folded=false;
-      await update(ref(db, `tables/${tableId}/players/${name}`), data);
-    }
-  }
-
-  await update(tableRef,{pot:0,lastBet:0,turnIndex:0});
-  selectedWinners.clear();
-  alert("Pot distributed! Ready for next hand.");
-};
-</script>
-
-<style>
-body { font-family: Arial,sans-serif; background:#0f1a28; color:white; text-align:center; padding:20px; }
-h1 { color:#ffcc00; }
-input, button { padding:8px; margin:5px; border-radius:5px; border:none; }
-button { cursor:pointer; font-weight:bold; background:#ffcc00; color:black; }
-#table { display:none; margin-top:20px; }
-#players { display:flex; flex-wrap: wrap; justify-content: center; gap:10px; margin-bottom:20px; }
-.player { background:#1e2840; padding:15px; border-radius:10px; width:180px; transition: all 0.3s; }
-.player.active { border:2px solid #ffcc00; transform: scale(1.05); }
-.actions { margin-top:10px; }
-</style>
+            .text {
+                letter-spacing: -1px;
+            }
+        }
+    </style>
 </head>
 
 <body>
-<h1>Real-Life Poker Tracker</h1>
 
-<div id="login">
-  <input id="username" placeholder="Enter your name">
-  <button onclick="login()">Join Table</button>
-</div>
+    <div class="container">
+        <!-- CHANGE THIS TEXT -->
+        <div class="text">
+            629-654-0201
+        </div>
+    </div>
 
-<div id="table">
-  <div id="players"></div>
-  <div id="pot" style="margin-bottom:5px; font-size:18px;"></div>
-  <div id="lastBet" style="margin-bottom:10px; font-size:16px;"></div>
-  <div class="actions">
-    <input id="amount" type="number" placeholder="Amount">
-    <button onclick="takeAction('bet')">Bet</button>
-    <button onclick="takeAction('raise')">Raise</button>
-    <button onclick="takeAction('call')">Call</button>
-    <button onclick="takeAction('check')">Check</button>
-    <button onclick="takeAction('fold')">Fold</button>
-  </div>
-  <div style="margin-top:20px;">
-    <button onclick="endGame()">End Game</button>
-  </div>
-</div>
 </body>
 </html>
+```
